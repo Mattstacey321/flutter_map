@@ -8,9 +8,9 @@ import 'package:latlong2/latlong.dart' hide Path;
 class CircleLayerOptions extends LayerOptions {
   final List<CircleMarker> circles;
   CircleLayerOptions({
-    Key key,
+    Key? key,
     this.circles = const [],
-    Stream<Null> rebuild,
+    Stream<Null>? rebuild,
   }) : super(key: key, rebuild: rebuild);
 }
 
@@ -24,8 +24,8 @@ class CircleMarker {
   Offset offset = Offset.zero;
   num realRadius = 0;
   CircleMarker({
-    this.point,
-    this.radius,
+    required this.point,
+    required this.radius,
     this.useRadiusInMeter = false,
     this.color = const Color(0xFF00FF00),
     this.borderStrokeWidth = 0.0,
@@ -36,11 +36,11 @@ class CircleMarker {
 class CircleLayerWidget extends StatelessWidget {
   final CircleLayerOptions options;
 
-  CircleLayerWidget({Key key, @required this.options}) : super(key: key);
+  CircleLayerWidget({Key? key, required this.options}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final mapState = MapState.of(context);
+    final mapState = MapState.maybeOf(context)!;
     return CircleLayer(options, mapState, mapState.onMoved);
   }
 }
@@ -48,9 +48,8 @@ class CircleLayerWidget extends StatelessWidget {
 class CircleLayer extends StatelessWidget {
   final CircleLayerOptions circleOpts;
   final MapState map;
-  final Stream<Null> stream;
-  CircleLayer(this.circleOpts, this.map, this.stream)
-      : super(key: circleOpts.key);
+  final Stream<Null>? stream;
+  CircleLayer(this.circleOpts, this.map, this.stream) : super(key: circleOpts.key);
 
   @override
   Widget build(BuildContext context) {
@@ -69,15 +68,13 @@ class CircleLayer extends StatelessWidget {
         var circleWidgets = <Widget>[];
         for (var circle in circleOpts.circles) {
           var pos = map.project(circle.point);
-          pos = pos.multiplyBy(map.getZoomScale(map.zoom, map.zoom)) -
-              map.getPixelOrigin();
+          pos = pos.multiplyBy(map.getZoomScale(map.zoom, map.zoom)) - map.getPixelOrigin();
           circle.offset = Offset(pos.x.toDouble(), pos.y.toDouble());
 
           if (circle.useRadiusInMeter) {
             var r = Distance().offset(circle.point, circle.radius, 180);
             var rpos = map.project(r);
-            rpos = rpos.multiplyBy(map.getZoomScale(map.zoom, map.zoom)) -
-                map.getPixelOrigin();
+            rpos = rpos.multiplyBy(map.getZoomScale(map.zoom, map.zoom)) - map.getPixelOrigin();
 
             circle.realRadius = rpos.y - pos.y;
           }
@@ -113,7 +110,7 @@ class CirclePainter extends CustomPainter {
       ..color = circle.color;
 
     _paintCircle(canvas, circle.offset,
-        circle.useRadiusInMeter ? circle.realRadius : circle.radius, paint);
+        circle.useRadiusInMeter ? circle.realRadius as double : circle.radius, paint);
 
     if (circle.borderStrokeWidth > 0) {
       final paint = Paint()
@@ -122,7 +119,7 @@ class CirclePainter extends CustomPainter {
         ..strokeWidth = circle.borderStrokeWidth;
 
       _paintCircle(canvas, circle.offset,
-          circle.useRadiusInMeter ? circle.realRadius : circle.radius, paint);
+          circle.useRadiusInMeter ? circle.realRadius as double : circle.radius, paint);
     }
   }
 

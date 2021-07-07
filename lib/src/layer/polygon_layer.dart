@@ -12,10 +12,10 @@ class PolygonLayerOptions extends LayerOptions {
 
   /// screen space culling of polygons based on bounding box
   PolygonLayerOptions({
-    Key key,
+    Key? key,
     this.polygons = const [],
     this.polygonCulling = false,
-    Stream<Null> rebuild,
+    Stream<Null>? rebuild,
   }) : super(key: key, rebuild: rebuild) {
     if (polygonCulling) {
       for (var polygon in polygons) {
@@ -28,17 +28,17 @@ class PolygonLayerOptions extends LayerOptions {
 class Polygon {
   final List<LatLng> points;
   final List<Offset> offsets = [];
-  final List<List<LatLng>> holePointsList;
-  final List<List<Offset>> holeOffsetsList;
+  final List<List<LatLng>>? holePointsList;
+  final List<List<Offset>>? holeOffsetsList;
   final Color color;
   final double borderStrokeWidth;
   final Color borderColor;
   final bool disableHolesBorder;
   final bool isDotted;
-  LatLngBounds boundingBox;
+  late final LatLngBounds boundingBox;
 
   Polygon({
-    this.points,
+    required this.points,
     this.holePointsList,
     this.color = const Color(0xFF00FF00),
     this.borderStrokeWidth = 0.0,
@@ -52,11 +52,11 @@ class Polygon {
 
 class PolygonLayerWidget extends StatelessWidget {
   final PolygonLayerOptions options;
-  PolygonLayerWidget({Key key, @required this.options}) : super(key: key);
+  PolygonLayerWidget({Key? key, required this.options}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final mapState = MapState.of(context);
+    final mapState = MapState.maybeOf(context)!;
     return PolygonLayer(options, mapState, mapState.onMoved);
   }
 }
@@ -64,10 +64,9 @@ class PolygonLayerWidget extends StatelessWidget {
 class PolygonLayer extends StatelessWidget {
   final PolygonLayerOptions polygonOpts;
   final MapState map;
-  final Stream stream;
+  final Stream<Null>? stream;
 
-  PolygonLayer(this.polygonOpts, this.map, this.stream)
-      : super(key: polygonOpts.key);
+  PolygonLayer(this.polygonOpts, this.map, this.stream) : super(key: polygonOpts.key);
 
   @override
   Widget build(BuildContext context) {
@@ -89,13 +88,12 @@ class PolygonLayer extends StatelessWidget {
           polygon.offsets.clear();
 
           if (null != polygon.holeOffsetsList) {
-            for (var offsets in polygon.holeOffsetsList) {
+            for (var offsets in polygon.holeOffsetsList!) {
               offsets.clear();
             }
           }
 
-          if (polygonOpts.polygonCulling &&
-              !polygon.boundingBox.isOverlapping(map.bounds)) {
+          if (polygonOpts.polygonCulling && !polygon.boundingBox.isOverlapping(map.bounds)) {
             // skip this polygon as it's offscreen
             continue;
           }
@@ -103,9 +101,8 @@ class PolygonLayer extends StatelessWidget {
           _fillOffsets(polygon.offsets, polygon.points);
 
           if (null != polygon.holePointsList) {
-            for (var i = 0, len = polygon.holePointsList.length; i < len; ++i) {
-              _fillOffsets(
-                  polygon.holeOffsetsList[i], polygon.holePointsList[i]);
+            for (var i = 0, len = polygon.holePointsList!.length; i < len; ++i) {
+              _fillOffsets(polygon.holeOffsetsList![i], polygon.holePointsList![i]);
             }
           }
 
@@ -131,8 +128,7 @@ class PolygonLayer extends StatelessWidget {
       var point = points[i];
 
       var pos = map.project(point);
-      pos = pos.multiplyBy(map.getZoomScale(map.zoom, map.zoom)) -
-          map.getPixelOrigin();
+      pos = pos.multiplyBy(map.getZoomScale(map.zoom, map.zoom)) - map.getPixelOrigin();
       offsets.add(Offset(pos.x.toDouble(), pos.y.toDouble()));
       if (i > 0) {
         offsets.add(Offset(pos.x.toDouble(), pos.y.toDouble()));
@@ -165,22 +161,18 @@ class PolygonPainter extends CustomPainter {
 
       if (polygonOpt.isDotted) {
         var spacing = polygonOpt.borderStrokeWidth * 1.5;
-        _paintDottedLine(
-            canvas, polygonOpt.offsets, borderRadius, spacing, borderPaint);
+        _paintDottedLine(canvas, polygonOpt.offsets, borderRadius, spacing, borderPaint);
 
-        if (!polygonOpt.disableHolesBorder &&
-            null != polygonOpt.holeOffsetsList) {
-          for (var offsets in polygonOpt.holeOffsetsList) {
-            _paintDottedLine(
-                canvas, offsets, borderRadius, spacing, borderPaint);
+        if (!polygonOpt.disableHolesBorder && null != polygonOpt.holeOffsetsList) {
+          for (var offsets in polygonOpt.holeOffsetsList!) {
+            _paintDottedLine(canvas, offsets, borderRadius, spacing, borderPaint);
           }
         }
       } else {
         _paintLine(canvas, polygonOpt.offsets, borderRadius, borderPaint);
 
-        if (!polygonOpt.disableHolesBorder &&
-            null != polygonOpt.holeOffsetsList) {
-          for (var offsets in polygonOpt.holeOffsetsList) {
+        if (!polygonOpt.disableHolesBorder && null != polygonOpt.holeOffsetsList) {
+          for (var offsets in polygonOpt.holeOffsetsList!) {
             _paintLine(canvas, offsets, borderRadius, borderPaint);
           }
         }
@@ -188,8 +180,8 @@ class PolygonPainter extends CustomPainter {
     }
   }
 
-  void _paintDottedLine(Canvas canvas, List<Offset> offsets, double radius,
-      double stepLength, Paint paint) {
+  void _paintDottedLine(
+      Canvas canvas, List<Offset> offsets, double radius, double stepLength, Paint paint) {
     var startDistance = 0.0;
     for (var i = 0; i < offsets.length - 1; i++) {
       var o0 = offsets[i];
@@ -210,8 +202,7 @@ class PolygonPainter extends CustomPainter {
     canvas.drawCircle(offsets.last, radius, paint);
   }
 
-  void _paintLine(
-      Canvas canvas, List<Offset> offsets, double radius, Paint paint) {
+  void _paintLine(Canvas canvas, List<Offset> offsets, double radius, Paint paint) {
     canvas.drawPoints(PointMode.lines, [...offsets, offsets[0]], paint);
     for (var offset in offsets) {
       canvas.drawCircle(offset, radius, paint);
@@ -225,7 +216,7 @@ class PolygonPainter extends CustomPainter {
       canvas.saveLayer(rect, paint);
       paint.style = PaintingStyle.fill;
 
-      for (var offsets in polygonOpt.holeOffsetsList) {
+      for (var offsets in polygonOpt.holeOffsetsList!) {
         var path = Path();
         path.addPolygon(offsets, true);
         canvas.drawPath(path, paint);
