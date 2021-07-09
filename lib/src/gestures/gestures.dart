@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:math';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map/src/gestures/interactive_flag.dart';
@@ -12,6 +14,7 @@ import 'package:flutter/physics.dart';
 
 abstract class MapGestureMixin extends State<FlutterMap> with TickerProviderStateMixin {
   static const double _kMinFlingVelocity = 800.0;
+  static const double _kDefaultMaxZoom = 25.0;
 
   var _dragMode = false;
   var _gestureWinner = MultiFingerGesture.none;
@@ -21,6 +24,15 @@ abstract class MapGestureMixin extends State<FlutterMap> with TickerProviderStat
   void savePointer(PointerEvent event) => ++_pointerCounter;
 
   void removePointer(PointerEvent event) => --_pointerCounter;
+
+  /*void handlePointerSignal(PointerSignalEvent pointerSignal) {
+    if (pointerSignal is PointerScrollEvent) {
+      handleScroll(
+        pointerSignal.localPosition,
+        pointerSignal.scrollDelta.dy,
+      );
+    }
+  }*/
 
   var _rotationStarted = false;
   var _pinchZoomStarted = false;
@@ -47,6 +59,11 @@ abstract class MapGestureMixin extends State<FlutterMap> with TickerProviderStat
   late Animation _doubleTapZoomAnimation;
   late Animation _doubleTapCenterAnimation;
 
+  // scroll animation
+  /*late AnimationController _scrollController;
+  late Animation _scrollZoomAnimation;
+  late Animation _scrollCenterAnimation;*/
+
   int _tapUpCounter = 0;
   Timer? _doubleTapHoldMaxDelay;
 
@@ -66,6 +83,8 @@ abstract class MapGestureMixin extends State<FlutterMap> with TickerProviderStat
     _doubleTapController = AnimationController(vsync: this, duration: Duration(milliseconds: 200))
       ..addListener(_handleDoubleTapZoomAnimation)
       ..addStatusListener(_doubleTapZoomStatusListener);
+    /*_scrollController = AnimationController(vsync: this, duration: Duration(milliseconds: 200))
+      ..addListener(_handleScrollZoomAnimation);*/
   }
 
   @override
@@ -482,8 +501,13 @@ abstract class MapGestureMixin extends State<FlutterMap> with TickerProviderStat
     closeFlingAnimationController(MapEventSource.tap);
     closeDoubleTapController(MapEventSource.tap);
 
+    var _callOnTap = true;
+    if (mapState.onTapRaw != null) {
+      _callOnTap = mapState.onTapRaw!(position);
+    }
+
     final latlng = _offsetToCrs(position.relative!);
-    if (options.onTap != null) {
+    if (options.onTap != null && _callOnTap) {
       // emit the event
       options.onTap!(latlng);
     }
@@ -503,13 +527,9 @@ abstract class MapGestureMixin extends State<FlutterMap> with TickerProviderStat
 
     closeFlingAnimationController(MapEventSource.longPress);
     closeDoubleTapController(MapEventSource.longPress);
-    var _callOnTap = true;
-    if (mapState.onTapRaw != null) {
-      _callOnTap = mapState.onTapRaw!(position);
-    }
-    
+
     final latlng = _offsetToCrs(position.relative!);
-    if (options.onLongPress != null && _callOnTap) {
+    if (options.onLongPress != null) {
       // emit the event
       options.onLongPress!(latlng);
     }
@@ -552,6 +572,41 @@ abstract class MapGestureMixin extends State<FlutterMap> with TickerProviderStat
       _startDoubleTapAnimation(newZoom, newCenter);
     }
   }
+
+  /*void handleScroll(Offset position, double delta) {
+    // Makes scrolling slower when zoomed in
+    // The 2 is the base amount of scaling
+    // The 4 controls the influence of the current zoom level to the scale
+    final scale = 2 + (mapState.options.maxZoom ?? _kDefaultMaxZoom) / (mapState.zoom * 4);
+    final focalOffset = _offsetToPoint(position);
+    final newZoom = _getZoomForScale(mapState.zoom, (delta > 0 ? -scale : scale));
+    final focalStart = _offsetToCrs(position);
+    final focalStartPt = mapState.project(focalStart, newZoom);
+    final newCenterPt = focalStartPt - focalOffset + mapState.size / 2.0;
+    final newCenter = mapState.unproject(newCenterPt, newZoom);
+    _startScrollAnimation(newZoom, newCenter);
+  }
+
+  void _startScrollAnimation(double newZoom, LatLng newCenter) {
+    _scrollZoomAnimation = Tween<double>(begin: mapState.zoom, end: newZoom)
+        .chain(CurveTween(curve: Curves.easeInOut))
+        .animate(_scrollController);
+    _scrollCenterAnimation = LatLngTween(begin: mapState.center, end: newCenter)
+        .chain(CurveTween(curve: Curves.easeInOut))
+        .animate(_scrollController);
+    _scrollController
+      ..value = 0.0
+      ..forward();
+  }
+
+  void _handleScrollZoomAnimation() {
+    mapState.move(
+      _scrollCenterAnimation.value,
+      _scrollZoomAnimation.value,
+      hasGesture: false,
+      source: MapEventSource.custom
+    );
+  }*/
 
   Offset _getDoubleTapFocalDelta(Offset centerPos, Offset tapPos, double zoomDiff) {
     final tapDelta = tapPos - centerPos;
@@ -686,6 +741,14 @@ abstract class MapGestureMixin extends State<FlutterMap> with TickerProviderStat
   }
 
   double _getZoomForScale(double startZoom, double scale) {
+    /*var resultZoom = max(
+      0,
+      min(
+        startZoom + ((scale > 0 ? 1 : -1) * (math.log(scale.abs()) / math.ln2)),
+        mapState.options.maxZoom ?? _kDefaultMaxZoom,
+      ),
+    );
+    return mapState.fitZoomToBounds(resultZoom as double);*/
     var resultZoom = scale == 1.0 ? startZoom : startZoom + math.log(scale) / math.ln2;
     return mapState.fitZoomToBounds(resultZoom);
   }
@@ -708,6 +771,7 @@ abstract class MapGestureMixin extends State<FlutterMap> with TickerProviderStat
   void dispose() {
     _flingController.dispose();
     _doubleTapController.dispose();
+    //_scrollController.dispose();
     super.dispose();
   }
 }

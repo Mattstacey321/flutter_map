@@ -9,8 +9,7 @@
 /// ~[InteractiveFlag.pinchMove] & ~[InteractiveFlag.pinchZoom] &
 /// ~[InteractiveFlag.doubleTapZoom]
 class InteractiveFlag {
-  static const int all =
-      drag | flingAnimation | pinchMove | pinchZoom | doubleTapZoom | rotate;
+  static const int all = drag | flingAnimation | pinchMove | pinchZoom | doubleTapZoom | rotate;
   static const int none = 0;
 
   // enable move with one finger

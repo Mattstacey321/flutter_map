@@ -36,6 +36,10 @@ class Polygon {
   final bool disableHolesBorder;
   final bool isDotted;
   late final LatLngBounds boundingBox;
+  // id for polygon
+  final dynamic id;
+  // property check visibility state
+  bool isHide;
 
   Polygon({
     required this.points,
@@ -45,6 +49,8 @@ class Polygon {
     this.borderColor = const Color(0xFFFFFF00),
     this.disableHolesBorder = false,
     this.isDotted = false,
+    this.id,
+    this.isHide = false,
   }) : holeOffsetsList = null == holePointsList || holePointsList.isEmpty
             ? null
             : List.generate(holePointsList.length, (_) => []);
@@ -107,9 +113,12 @@ class PolygonLayer extends StatelessWidget {
           }
 
           polygons.add(
-            CustomPaint(
-              painter: PolygonPainter(polygon),
-              size: size,
+            Visibility(
+              visible: !polygon.isHide,
+              child: CustomPaint(
+                painter: PolygonPainter(polygon),
+                size: size,
+              ),
             ),
           );
         }

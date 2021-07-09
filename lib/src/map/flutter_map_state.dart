@@ -165,7 +165,7 @@ class FlutterMapState extends MapGestureMixin {
     if (options is OverlayImageLayerOptions) {
       return OverlayImageLayer(options, mapState, _merge(options));
     }
-    throw(StateError("""
+    throw (StateError("""
 Can't find correct layer for $options. Perhaps when you create your FlutterMap you need something like this:
 
     options: new MapOptions(plugins: [MyFlutterMapPlugin()])"""));
